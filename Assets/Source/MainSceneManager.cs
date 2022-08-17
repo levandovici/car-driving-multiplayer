@@ -1,0 +1,247 @@
+using LimonadoEntertainment.Net.Multiplayer.Commands;
+using LimonadoEntertainment.Net.Multiplayer.Data;
+using LimonadoEntertainment.Net.Multiplayer;
+using LimonadoEntertainment.Debug;
+using LimonadoEntertainment.Data;
+using LimonadoEntertainment.Net;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Collections;
+using System.Threading;
+using UnityEngine.UI;
+using UnityEngine;
+using System.Net;
+using System;
+using System.Xml;
+using System.Text.Json;
+using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
+using UnityEngine.SceneManagement;
+
+public class MainSceneManager : MonoBehaviour
+{
+    [SerializeField]
+    private MainUIManager _mainUIManager;
+
+
+
+    [SerializeField]
+    private Transform _localHostButtons;
+
+
+
+    [SerializeField]
+    private Button _button_prefab;
+
+    private List<LocatedServerInfoButton> _server_info_buttons = new List<LocatedServerInfoButton>();
+
+    private LocatedServerInfoStack _stack = new LocatedServerInfoStack();
+
+    private int _max_stack_length = 256;
+
+
+
+    private void SetUpHost()
+    {
+        for (int i = 0; i < _localHostButtons.childCount; i++)
+        {
+            Destroy(_localHostButtons.GetChild(i).gameObject);
+        }
+    }
+
+
+
+    private void Awake()
+    {
+        _mainUIManager.MainUI.OnClickSingleplayer += () =>
+        {
+            SceneManager.LoadScene(1);
+        };
+
+
+
+        DebugConsole.Enabled = true;
+
+        DebugConsole.OnLog += Debug.Log;
+
+        DebugConsole.OnLogWarning += Debug.LogWarning;
+
+        DebugConsole.OnLogError += Debug.LogError;
+
+
+
+        SetUpHost();
+
+        _mainUIManager.MainUI.OnClickMultiplayer += () =>
+        {
+            Multiplayer.StopBroadcastClient();
+
+            IPAddress[] ips = null;
+
+            bool success = Lan.TryGetLocalIPv4Addresses(LimonadoEntertainment.EPlatform.Android, out ips);
+
+            Multiplayer.Name = "Car Driving Multiplayer";
+
+            if (success)
+            {
+                Multiplayer.IpAddress = ips[0];
+
+            }
+            else
+            {
+                Multiplayer.IpAddress = IPAddress.Any;
+            }
+
+            Debug.LogError($"IP: {Multiplayer.IpAddress}");
+
+            SaveLoadManager.SetUp(true, true);
+
+            UnityEngine.SceneManagement.SceneManager.LoadScene(2);
+        };
+
+
+
+        Multiplayer.StartBroadcastClient(new AppMessage(1, "car-driving-multiplayer", JsonSerializer.Serialize(Command.New("get-server-info"))), (lm) =>
+        {
+            Debug.LogWarning(lm.Message.Message);
+
+            if (lm.Message.Name == "car-driving-multiplayer")
+            {
+                Command command = JsonSerializer.Deserialize<Command>(lm.Message.Message);
+
+                if (command == Command.New("server-info") && command.Arguments.Length > 1)
+                {
+                    try
+                    {
+                        ServerInfo serverInfo = JsonSerializer.Deserialize<ServerInfo>(command.Arguments[1]);
+
+                        Debug.Log(lm.IPEndPoint);
+
+                        if (_stack.Count() < _max_stack_length)
+                        {
+                            _stack.Push(new LocatedServerInfo(serverInfo, lm.IPEndPoint));
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"[ERROR][ReceiveServerInfo][{e.Message}]");
+                    }
+                }
+            }
+        });
+
+        StartCoroutine(CheckServerInfoStack());
+    }
+
+
+
+    private void OnDestroy()
+    {
+        Multiplayer.StopBroadcastClient();
+
+        DebugConsole.ClearEvents();
+
+        StopAllCoroutines();
+    }
+
+
+
+    private IEnumerator CheckServerInfoStack()
+    {
+        while (true)
+        {
+            while (_stack.Count() > 0)
+            {
+                LocatedServerInfo located = _stack.Pop();
+
+
+                bool contains = false;
+
+                foreach (LocatedServerInfoButton s in _server_info_buttons)
+                {
+                    if (s.locatedServerInfo.IPEndPoint.Equals(located.IPEndPoint))
+                    {
+                        s.locatedServerInfo = located;
+
+                        contains = true;
+
+                        Debug.LogWarning("Contains!");
+
+
+                        s.button.onClick.RemoveAllListeners();
+
+                        s.button.onClick.AddListener(() =>
+                        {
+                            Multiplayer.IpAddress = s.locatedServerInfo.IPEndPoint.Address;
+
+                            Multiplayer.Port = s.locatedServerInfo.ServerInfo.Port;
+
+                            SaveLoadManager.SetUp(false, true);
+
+                            UnityEngine.SceneManagement.SceneManager.LoadScene(2);
+                        });
+
+
+                        IPEndPoint point = new IPEndPoint(s.locatedServerInfo.IPEndPoint.Address, s.locatedServerInfo.ServerInfo.Port);
+
+                        s.text.text = $"Server: {point}";
+                    }
+                }
+
+                if (!contains)
+                {
+                    Button button = Instantiate(_button_prefab, _localHostButtons);
+
+                    Text text = button.transform.GetChild(0).GetComponent<Text>();
+
+
+                    button.onClick.AddListener(() =>
+                    {
+                        Multiplayer.IpAddress = located.IPEndPoint.Address;
+
+                        Multiplayer.Port = located.ServerInfo.Port;
+
+                        SaveLoadManager.SetUp(false, true);
+
+                        UnityEngine.SceneManagement.SceneManager.LoadScene(2);
+                    });
+
+
+                    IPEndPoint point = new IPEndPoint(located.IPEndPoint.Address, located.ServerInfo.Port);
+
+                    text.text = $"Server: {point}";
+
+
+                    LocatedServerInfoButton serverInfoButton = new LocatedServerInfoButton(located, button, text);
+
+                    _server_info_buttons.Add(serverInfoButton);
+                }
+            }
+
+
+            yield return new WaitForSeconds(1f);
+        }
+    }
+
+
+
+    public class LocatedServerInfoButton
+    {
+        public LocatedServerInfo locatedServerInfo;
+
+        public Button button;
+
+        public Text text;
+
+
+
+        public LocatedServerInfoButton(LocatedServerInfo locatedServerInfo, Button button, Text text)
+        {
+            this.locatedServerInfo = locatedServerInfo;
+
+            this.button = button;
+
+            this.text = text;
+        }
+    }
+}
