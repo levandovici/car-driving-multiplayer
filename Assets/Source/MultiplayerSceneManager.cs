@@ -316,7 +316,7 @@ public class MultiplayerSceneManager : GameSceneManager
                 {
                     return new AppMessage(1, "car-driving-multiplayer", "denied");
                 }
-            });
+            }, 0);
         }
 
         if (SaveLoadManager.StartClient)
