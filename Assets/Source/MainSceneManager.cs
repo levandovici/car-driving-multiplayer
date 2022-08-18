@@ -72,13 +72,21 @@ public class MainSceneManager : MonoBehaviour
 
         SetUpHost();
 
+        LimonadoEntertainment.EPlatform platform;
+
+#if UNITY_STANDALONE || UNITY_EDITOR
+        platform = LimonadoEntertainment.EPlatform.Standalone;
+#elif UNITY_ANDROID
+        platform = LimonadoEntertainment.EPlatform.Android;
+#endif
+
         _mainUIManager.MainUI.OnClickMultiplayer += () =>
         {
             Multiplayer.StopBroadcastClient();
 
             IPAddress[] ips = null;
 
-            bool success = Lan.TryGetLocalIPv4Addresses(LimonadoEntertainment.EPlatform.Standalone, out ips);
+            bool success = Lan.TryGetLocalIPv4Addresses(platform, out ips);
 
             Multiplayer.Name = "Car Driving Multiplayer";
 
@@ -101,7 +109,8 @@ public class MainSceneManager : MonoBehaviour
 
 
 
-        Multiplayer.StartBroadcastClient(LimonadoEntertainment.EPlatform.Standalone, new AppMessage(1, "car-driving-multiplayer", JsonSerializer.Serialize(Command.New("get-server-info"))), (lm) =>
+
+        Multiplayer.StartBroadcastClient(platform, new AppMessage(1, "car-driving-multiplayer", JsonSerializer.Serialize(Command.New("get-server-info"))), (lm) =>
         {
             Debug.LogWarning(lm.Message.Message);
 
