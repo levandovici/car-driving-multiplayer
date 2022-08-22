@@ -17,6 +17,8 @@ using System.Text.Json;
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 using UnityEngine.SceneManagement;
+using System.IO;
+using System.Text;
 
 public class MainSceneManager : MonoBehaviour
 {
@@ -38,6 +40,10 @@ public class MainSceneManager : MonoBehaviour
     private LocatedServerInfoStack _stack = new LocatedServerInfoStack();
 
     private int _max_stack_length = 256;
+
+    private StringBuilder stringBuilder = new StringBuilder();
+
+    private object @lock = new object();
 
 
 
@@ -62,11 +68,35 @@ public class MainSceneManager : MonoBehaviour
 
         DebugConsole.Enabled = true;
 
-        DebugConsole.OnLog += Debug.Log;
+        DebugConsole.OnLog += (log) =>
+        {
+            Debug.Log(log);
 
-        DebugConsole.OnLogWarning += Debug.LogWarning;
+            lock(@lock)
+            {
+                stringBuilder.AppendLine(log);
+            }
+        };
 
-        DebugConsole.OnLogError += Debug.LogError;
+        DebugConsole.OnLogWarning += (log) =>
+        {
+            Debug.LogWarning(log);
+
+            lock (@lock)
+            {
+                stringBuilder.AppendLine(log);
+            }
+        };
+
+        DebugConsole.OnLogError += (log) =>
+        {
+            Debug.LogError(log);
+
+            lock (@lock)
+            {
+                stringBuilder.AppendLine(log);
+            }
+        };
 
 
 
@@ -118,6 +148,11 @@ public class MainSceneManager : MonoBehaviour
         {
             Debug.LogWarning(lm.Message.Message);
 
+            lock(@lock)
+            {
+                stringBuilder.AppendLine(lm.Message.Message);
+            }
+
             if (lm.Message.Name == "car-driving-multiplayer")
             {
                 Command command = JsonSerializer.Deserialize<Command>(lm.Message.Message);
@@ -155,6 +190,28 @@ public class MainSceneManager : MonoBehaviour
         DebugConsole.ClearEvents();
 
         StopAllCoroutines();
+    }
+
+    private void OnApplicationQuit()
+    {
+        lock (@lock)
+        {
+            string path;
+
+#if UNITY_STANDALONE || UNITY_EDITOR
+
+            path = Path.Combine(Application.dataPath, "DebugLog.txt");
+
+#elif UNITY_ANDROID
+
+            path = Path.Combine(Application.persistentDataPath, "DebugLog.txt");
+
+#endif
+
+            File.WriteAllText(path, stringBuilder.ToString());
+
+            Debug.Log(stringBuilder.ToString());
+        }
     }
 
 

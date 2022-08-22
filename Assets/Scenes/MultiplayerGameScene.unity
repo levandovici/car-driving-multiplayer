@@ -2760,6 +2760,7 @@ MonoBehaviour:
   _bl_rotation: {x: 0, y: 0, z: 0}
   _br_position: {x: 0, y: 0, z: 0}
   _br_rotation: {x: 0, y: 0, z: 0}
+  _lights: 0
 --- !u!1 &1966821125
 GameObject:
   m_ObjectHideFlags: 0
