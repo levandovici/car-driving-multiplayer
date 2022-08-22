@@ -75,9 +75,13 @@ public class MainSceneManager : MonoBehaviour
         LimonadoEntertainment.EPlatform platform;
 
 #if UNITY_STANDALONE || UNITY_EDITOR
+
         platform = LimonadoEntertainment.EPlatform.Standalone;
+
 #elif UNITY_ANDROID
+
         platform = LimonadoEntertainment.EPlatform.Android;
+
 #endif
 
         _mainUIManager.MainUI.OnClickMultiplayer += () =>

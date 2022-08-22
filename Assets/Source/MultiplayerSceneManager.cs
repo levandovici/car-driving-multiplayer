@@ -300,7 +300,19 @@ public class MultiplayerSceneManager : GameSceneManager
     {
         if (SaveLoadManager.StartServer)
         {
-            Multiplayer.StartServer(new ServerGameData(System.Guid.NewGuid().ToString()), (locatedMessage) =>
+            EPlatform platform;
+
+#if UNITY_STANDALONE || UNITY_EDITOR
+
+            platform = EPlatform.Standalone;
+
+#elif UNITY_ANDROID
+
+            platform = EPlatform.Android;
+
+#endif
+
+            Multiplayer.StartServer(platform, new ServerGameData(System.Guid.NewGuid().ToString()), (locatedMessage) =>
             {
                 Debug.LogError(locatedMessage.Message);
 
