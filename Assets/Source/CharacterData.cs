@@ -1,89 +1,87 @@
-using System.Runtime.Serialization;
 using UnityEngine;
 using System;
 using LimonadoEntertainment.Data;
-using System.Text.Json.Serialization;
 
 
 
 [Serializable]
 public class CharacterData
 {
-    private float _position_x;
+    public float _position_x;
 
-    private float _position_y;
+    public float _position_y;
 
-    private float _position_z;
-
-
-    private float _rotation_x;
-
-    private float _rotation_y;
-
-    private float _rotation_z;
+    public float _position_z;
 
 
+    public float _rotation_x;
 
-    private float _fl_position_x;
+    public float _rotation_y;
 
-    private float _fl_position_y;
-
-    private float _fl_position_z;
-
-
-    private float _fl_rotation_x;
-
-    private float _fl_rotation_y;
-
-    private float _fl_rotation_z;
+    public float _rotation_z;
 
 
 
-    private float _fr_position_x;
+    public float _fl_position_x;
 
-    private float _fr_position_y;
+    public float _fl_position_y;
 
-    private float _fr_position_z;
-
-
-    private float _fr_rotation_x;
-
-    private float _fr_rotation_y;
-
-    private float _fr_rotation_z;
+    public float _fl_position_z;
 
 
+    public float _fl_rotation_x;
 
-    private float _bl_position_x;
+    public float _fl_rotation_y;
 
-    private float _bl_position_y;
-
-    private float _bl_position_z;
-
-
-    private float _bl_rotation_x;
-
-    private float _bl_rotation_y;
-
-    private float _bl_rotation_z;
+    public float _fl_rotation_z;
 
 
 
-    private float _br_position_x;
+    public float _fr_position_x;
 
-    private float _br_position_y;
+    public float _fr_position_y;
 
-    private float _br_position_z;
-
-
-    private float _br_rotation_x;
-
-    private float _br_rotation_y;
-
-    private float _br_rotation_z;
+    public float _fr_position_z;
 
 
-    private bool _lights;
+    public float _fr_rotation_x;
+
+    public float _fr_rotation_y;
+
+    public float _fr_rotation_z;
+
+
+
+    public float _bl_position_x;
+
+    public float _bl_position_y;
+
+    public float _bl_position_z;
+
+
+    public float _bl_rotation_x;
+
+    public float _bl_rotation_y;
+
+    public float _bl_rotation_z;
+
+
+
+    public float _br_position_x;
+
+    public float _br_position_y;
+
+    public float _br_position_z;
+
+
+    public float _br_rotation_x;
+
+    public float _br_rotation_y;
+
+    public float _br_rotation_z;
+
+
+    public bool _lights;
 
 
 
@@ -506,7 +504,6 @@ public class CharacterData
 
 
 
-    [JsonIgnore]
     public CharacterData Clone => new CharacterData(PositionX, PositionY, PositionZ, RotationX, RotationY, RotationZ,
                                                     FLPositionX, FLPositionY, FLPositionZ, FLRotationX, FLRotationY, FLRotationZ,
                                                     FRPositionX, FRPositionY, FRPositionZ, FRRotationX, FRRotationY, FRRotationZ,

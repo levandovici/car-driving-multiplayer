@@ -15,11 +15,6 @@ using System.Collections.Generic;
 using UnityEngine.SceneManagement;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Runtime.Serialization;
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using System.Text.Unicode;
-using System.Text.Encodings.Web;
 using System;
 using System.IO;
 
@@ -107,7 +102,7 @@ public class MultiplayerSceneManager : GameSceneManager
 
                 string message = m.GetMessage;
 
-                Terminal terminal = JsonSerializer.Deserialize<Terminal>(message);
+                Terminal terminal = JsonUtility.FromJson<Terminal>(message);
 
                 Command[] commands = terminal.Commands;
 
@@ -128,39 +123,39 @@ public class MultiplayerSceneManager : GameSceneManager
 
                         Debug.Log($"[SERVER-ID][{arg}]");
 
-                        string data = JsonSerializer.Serialize(new GameData(new CharacterData(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, false)));
+                        string data = JsonUtility.ToJson(new GameData(new CharacterData(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, false)));
 
-                        Multiplayer.Client.GameData = new PlayerGameData(data);
+                        Multiplayer.Client.GameData = new JsonStorage(data);
 
-                        Multiplayer.Client.Request(new Message(JsonSerializer.Serialize(Terminal.New("register").Arg(data))));
+                        Multiplayer.Client.Request(new Message(JsonUtility.ToJson(Terminal.New("register").Arg(data))));
                     }
                     else if (commands[i] == Command.New("credentials"))
                     {
                         string arg = commands[i].Arguments[1];
 
-                        Credentials credentials = JsonSerializer.Deserialize<Credentials>(arg);
+                        Credentials credentials = JsonUtility.FromJson<Credentials>(arg);
 
                         Multiplayer.Client.ClientData = new ClientGameData(server_id, credentials);
 
-                        Multiplayer.Client.Request(new Message(JsonSerializer.Serialize(Terminal.New("log-in").Arg($"{JsonSerializer.Serialize(credentials)}"))));
+                        Multiplayer.Client.Request(new Message(JsonUtility.ToJson(Terminal.New("log-in").Arg($"{JsonUtility.ToJson(credentials)}"))));
                     }
                     else if (commands[i] == Command.New("log-in-successful"))
                     {
                         Debug.Log("[LOG-IN-SUCCESSFUL]");
 
-                        Multiplayer.Client.Request(new Message(JsonSerializer.Serialize(Terminal.New("get-server-data"))));
+                        Multiplayer.Client.Request(new Message(JsonUtility.ToJson(Terminal.New("get-server-data"))));
                     }
                     else if (commands[i] == Command.New("log-in-error"))
                     {
                         Debug.Log("[LOG-IN-ERROR]");
 
-                        Multiplayer.Client.Request(new Message(JsonSerializer.Serialize(Terminal.New("disconnect"))));
+                        Multiplayer.Client.Request(new Message(JsonUtility.ToJson(Terminal.New("disconnect"))));
                     }
                     else if (commands[i] == Command.New("server-data"))
                     {
                         Debug.Log("[SERVER-DATA]");
 
-                        ServerGameData server_data = JsonSerializer.Deserialize<ServerGameData>(commands[i].Arguments[1]);
+                        ServerGameData server_data = JsonUtility.FromJson<ServerGameData>(commands[i].Arguments[1]);
 
                         Multiplayer.Client.ServerData = server_data;
                     }
@@ -191,7 +186,7 @@ public class MultiplayerSceneManager : GameSceneManager
                 Debug.Log($"[REQUEST-MESSAGE][{message}]");
 
 
-                Terminal terminal = JsonSerializer.Deserialize<Terminal>(message);
+                Terminal terminal = JsonUtility.FromJson<Terminal>(message);
 
                 Command[] commands = terminal.Commands;
 
@@ -212,26 +207,26 @@ public class MultiplayerSceneManager : GameSceneManager
                     }
                     else if(commands[i] == Command.New("get-server-info"))
                     {
-                        response_terminal.Next("server-info").Arg(JsonSerializer.Serialize(new ServerInfo(Multiplayer.Server.IPEndPoint.Port, Multiplayer.Name, Multiplayer.Server.PublicServerData.ServerID, Multiplayer.Server.PublicServerData.Clients.Length)));
+                        response_terminal.Next("server-info").Arg(JsonUtility.ToJson(new ServerInfo(Multiplayer.Server.IPEndPoint.Port, Multiplayer.Name, Multiplayer.Server.PublicServerData.ServerID, Multiplayer.Server.PublicServerData.Clients.Length)));
                     }
                     else if (commands[i] == Command.New("register"))
                     {
                         if (commands[i].Arguments.Length > 1)
                         {
-                            PlayerGameData data = new PlayerGameData(commands[i].Arguments[1]);
+                            JsonStorage data = new JsonStorage(commands[i].Arguments[1]);
 
                             Credentials credentials = Multiplayer.Server.RegisterNewPlayer(data);
 
                             Debug.Log(credentials);
 
-                            response_terminal.Next($"credentials").Arg($"{JsonSerializer.Serialize(credentials)}");
+                            response_terminal.Next($"credentials").Arg($"{JsonUtility.ToJson(credentials)}");
                         }
                     }
                     else if (commands[i] == Command.New("log-in"))
                     {
                         if (commands[i].Arguments.Length > 1)
                         {
-                            Credentials credentials = JsonSerializer.Deserialize<Credentials>(commands[i].Arguments[1]);
+                            Credentials credentials = JsonUtility.FromJson<Credentials>(commands[i].Arguments[1]);
 
                             if (Multiplayer.Server.Contains(credentials))
                             {
@@ -265,12 +260,12 @@ public class MultiplayerSceneManager : GameSceneManager
                     }
                     else if (commands[i] == Command.New("get-server-data"))
                     {
-                        response_terminal.Next($"server-data").Arg($"{JsonSerializer.Serialize(Multiplayer.Server.PublicServerData)}");
+                        response_terminal.Next($"server-data").Arg($"{JsonUtility.ToJson(Multiplayer.Server.PublicServerData)}");
                     }
                 }
 
                 Multiplayer.Server.Response(new IdentifiedMessage(
-                        new Message(JsonSerializer.Serialize(response_terminal)), im.ID));
+                        new Message(JsonUtility.ToJson(response_terminal)), im.ID));
             };
 
             Multiplayer.Server.OnDisconnected += () => Debug.LogWarning("DISCONNECTED");
@@ -278,7 +273,7 @@ public class MultiplayerSceneManager : GameSceneManager
 
         Multiplayer.OnClientStarted += () =>
         {
-            Multiplayer.Client.Request(new Message(JsonSerializer.Serialize(Terminal.New("get-server-id"))));
+            Multiplayer.Client.Request(new Message(JsonUtility.ToJson(Terminal.New("get-server-id"))));
         };
 
         Multiplayer.OnServerStarted += () => Debug.LogWarning("[SERVER-STARTED]");
@@ -323,7 +318,7 @@ public class MultiplayerSceneManager : GameSceneManager
                 {
                     ServerInfo info = new ServerInfo(Multiplayer.Server.IPEndPoint.Port, Multiplayer.Name, Multiplayer.Server.PublicServerData.ServerID, Multiplayer.Server.PublicServerData.Clients.Length);
 
-                    return new AppMessage(1, "car-driving-multiplayer", $"{JsonSerializer.Serialize(Command.New("server-info").Arg(JsonSerializer.Serialize(info)))}");
+                    return new AppMessage(1, "car-driving-multiplayer", $"{JsonUtility.ToJson(Command.New("server-info").Arg(JsonUtility.ToJson(info)))}");
                 }
                 else
                 {
@@ -397,11 +392,11 @@ public class MultiplayerSceneManager : GameSceneManager
                     {
                         Terminal commands = Terminal.New();
 
-                        commands.Next("set-game-data").Arg($"{JsonSerializer.Serialize(new GameData(new CharacterData(_position.x, _position.y, _position.z, _rotation.x, _rotation.y, _rotation.z, _fl_position.x, _fl_position.y, _fl_position.z, _fl_rotation.x, _fl_rotation.y, _fl_rotation.z, _fr_position.x, _fr_position.y, _fr_position.z, _fr_rotation.x, _fr_rotation.y, _fr_rotation.z, _bl_position.x, _bl_position.y, _bl_position.z, _bl_rotation.x, _bl_rotation.y, _bl_rotation.z, _br_position.x, _br_position.y, _br_position.z, _bl_rotation.y, _br_rotation.y, _br_rotation.z, _lights)))}");
+                        commands.Next("set-game-data").Arg($"{JsonUtility.ToJson(new GameData(new CharacterData(_position.x, _position.y, _position.z, _rotation.x, _rotation.y, _rotation.z, _fl_position.x, _fl_position.y, _fl_position.z, _fl_rotation.x, _fl_rotation.y, _fl_rotation.z, _fr_position.x, _fr_position.y, _fr_position.z, _fr_rotation.x, _fr_rotation.y, _fr_rotation.z, _bl_position.x, _bl_position.y, _bl_position.z, _bl_rotation.x, _bl_rotation.y, _bl_rotation.z, _br_position.x, _br_position.y, _br_position.z, _bl_rotation.y, _br_rotation.y, _br_rotation.z, _lights)))}");
 
                         commands.Next("get-server-data");
 
-                        Multiplayer.Client.Request(new Message(JsonSerializer.Serialize(commands)));
+                        Multiplayer.Client.Request(new Message(JsonUtility.ToJson(commands)));
                     }
 
                 }
