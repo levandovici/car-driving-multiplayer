@@ -2272,10 +2272,8 @@ namespace LimonadoEntertainment
                             {
                                 await BroadcastClient.BroadcastRequestAsync(masks, BroadcastPortRange, request, onReceiveResponse, receiveResponsesMilliseconds);
                             }
-                            else
-                            {
-                                await BroadcastClient.BroadcastRequestAsync(IPAddress.Broadcast, BroadcastPortRange, request, onReceiveResponse, receiveResponsesMilliseconds);
-                            }
+                            
+                            await BroadcastClient.BroadcastRequestAsync(IPAddress.Broadcast, BroadcastPortRange, request, onReceiveResponse, receiveResponsesMilliseconds);
 
                             BroadcastClientLocating = false;
 
@@ -2308,10 +2306,8 @@ namespace LimonadoEntertainment
                             {
                                 BroadcastClient.BeginBroadcastRequest(masks, BroadcastPortRange, request, onReceiveResponse, receiveResponsesMilliseconds);
                             }
-                            else
-                            {
-                                BroadcastClient.BeginBroadcastRequest(IPAddress.Broadcast, BroadcastPortRange, request, onReceiveResponse, receiveResponsesMilliseconds);
-                            }
+                            
+                            BroadcastClient.BeginBroadcastRequest(IPAddress.Broadcast, BroadcastPortRange, request, onReceiveResponse, receiveResponsesMilliseconds);
 
                             BroadcastClientLocating = false;
 
