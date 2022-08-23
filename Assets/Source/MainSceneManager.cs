@@ -38,13 +38,6 @@ public class MainSceneManager : MonoBehaviour
 
     private int _max_stack_length = 256;
 
-    private StringBuilder stringBuilder = new StringBuilder();
-
-    private object @lock = new object();
-
-    [SerializeField]
-    private Text _debug;
-
 
 
     private void SetUpHost()
@@ -64,41 +57,22 @@ public class MainSceneManager : MonoBehaviour
             SceneManager.LoadScene(1);
         };
 
-        _debug.text = "Enable DebugConsole \n";
-
         DebugConsole.Enabled = true;
 
         DebugConsole.OnLog += (log) =>
         {
             Debug.Log(log);
-
-            lock(@lock)
-            {
-                stringBuilder.AppendLine(log);
-            }
         };
 
         DebugConsole.OnLogWarning += (log) =>
         {
             Debug.LogWarning(log);
-
-            lock (@lock)
-            {
-                stringBuilder.AppendLine(log);
-            }
         };
 
         DebugConsole.OnLogError += (log) =>
         {
             Debug.LogError(log);
-
-            lock (@lock)
-            {
-                stringBuilder.AppendLine(log);
-            }
         };
-
-        _debug.text = _debug.text + "Set Up Host \n";
 
         SetUpHost();
 
@@ -114,10 +88,6 @@ public class MainSceneManager : MonoBehaviour
 
 #endif
 
-        _debug.text = _debug.text + $"Platform: {platform} \n";
-
-        _debug.text = _debug.text + $"OnClickMultiplayer \n";
-
         _mainUIManager.MainUI.OnClickMultiplayer += () =>
         {
             Multiplayer.StopBroadcastClient();
@@ -131,14 +101,10 @@ public class MainSceneManager : MonoBehaviour
             if (success)
             {
                 Multiplayer.IpAddress = ips[0];
-
-                _debug.text = _debug.text + $"IP: {ips[0]} \n";
             }
             else
             {
                 Multiplayer.IpAddress = IPAddress.Any;
-
-                _debug.text = _debug.text + $"Any IP \n";
             }
 
             Debug.LogError($"IP: {Multiplayer.IpAddress}");
@@ -148,54 +114,36 @@ public class MainSceneManager : MonoBehaviour
             UnityEngine.SceneManagement.SceneManager.LoadScene(2);
         };
 
-
-        _debug.text = _debug.text + $"StartBroadcastClient \n";
-
-        try
+        Multiplayer.StartBroadcastClient(platform, new AppMessage(1, "car-driving-multiplayer", JsonUtility.ToJson(Command.New("get-server-info"))), (lm) =>
         {
-            Multiplayer.StartBroadcastClient(platform, new AppMessage(1, "car-driving-multiplayer", JsonUtility.ToJson(Command.New("get-server-info"))), (lm) =>
+            Debug.LogWarning(lm.Message.Message);
+
+            if (lm != null && lm.Message != null && lm.Message.Name == "car-driving-multiplayer")
             {
-                Debug.LogWarning(lm.Message.Message);
-
-                if (lm != null && lm.Message != null && lm.Message.Name == "car-driving-multiplayer")
+                try
                 {
-                    try
+                    Command command = JsonUtility.FromJson<Command>(lm.Message.Message);
+
+                    if (command == Command.New("server-info") && command.Arguments.Length > 1)
                     {
-                        Command command = JsonUtility.FromJson<Command>(lm.Message.Message);
+                        ServerInfo serverInfo = JsonUtility.FromJson<ServerInfo>(command.Arguments[1]);
 
-                        if (command == Command.New("server-info") && command.Arguments.Length > 1)
+                        Debug.Log(lm.IPEndPoint);
+
+                        if (_stack.Count() < _max_stack_length)
                         {
-                            ServerInfo serverInfo = JsonUtility.FromJson<ServerInfo>(command.Arguments[1]);
-
-                            Debug.Log(lm.IPEndPoint);
-
-                            if (_stack.Count() < _max_stack_length)
-                            {
-                                _stack.Push(new LocatedServerInfo(serverInfo, lm.IPEndPoint));
-                            }
+                            _stack.Push(new LocatedServerInfo(serverInfo, lm.IPEndPoint));
                         }
                     }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"[ERROR][ReceiveServerInfo][{e.Message}]");
-                    }
                 }
-            });
-        }
-        catch(Exception e)
-        {
-            _debug.text = _debug.text + $"{e.Message} \n";
-
-            _debug.text = _debug.text + $"{e.Source} \n";
-
-            _debug.text = _debug.text + $"{e.StackTrace} \n";
-        }
-
-        _debug.text = _debug.text + $"StartCheckServerInfo \n";
+                catch (Exception e)
+                {
+                    Debug.LogError($"[ERROR][ReceiveServerInfo][{e.Message}]");
+                }
+            }
+        });
 
         StartCoroutine(CheckServerInfoStack());
-
-        _debug.text = _debug.text + $"End \n";
     }
 
 
@@ -209,49 +157,15 @@ public class MainSceneManager : MonoBehaviour
         StopAllCoroutines();
     }
 
-    private void OnApplicationQuit()
-    {
-        lock (@lock)
-        {
-            string path;
-
-#if UNITY_STANDALONE || UNITY_EDITOR
-
-            path = Path.Combine(Application.dataPath, "DebugLog.txt");
-
-#elif UNITY_ANDROID
-
-            path = Path.Combine(Application.persistentDataPath, "DebugLog.txt");
-
-#endif
-
-            File.WriteAllText(path, stringBuilder.ToString());
-
-            Debug.Log(stringBuilder.ToString());
-        }
-    }
-
 
 
     private IEnumerator CheckServerInfoStack()
     {
         while (true)
         {
-            _debug.text = _debug.text + $"Mailbox is free \n";
-
             while (_stack.Count() > 0)
             {
                 LocatedServerInfo located = _stack.Pop();
-
-                _debug.text = _debug.text + $"Message: {located.IPEndPoint} \n";
-
-                _debug.text = _debug.text + $"Message: {located.ServerInfo.Port} \n";
-
-                lock (@lock)
-                {
-                    stringBuilder.AppendLine(located.ServerInfo.Port.ToString());
-                }
-
 
                 bool contains = false;
 
