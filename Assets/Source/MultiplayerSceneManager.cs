@@ -298,7 +298,7 @@ public class MultiplayerSceneManager : GameSceneManager
         {
             EPlatform platform;
 
-#if UNITY_STANDALONE || UNITY_EDITOR
+#if UNITY_STANDALONE
 
             platform = EPlatform.Standalone;
 
@@ -310,19 +310,40 @@ public class MultiplayerSceneManager : GameSceneManager
 
             Multiplayer.StartServer(platform, new ServerGameData(System.Guid.NewGuid().ToString()), (locatedMessage) =>
             {
-                Debug.LogError(locatedMessage.Message);
-
-                AppMessage appMessage = locatedMessage.Message;
-
-                if (appMessage.Name == "car-driving-multiplayer")
+                if (locatedMessage != null && locatedMessage.Message != null)
                 {
-                    ServerInfo info = new ServerInfo(Multiplayer.Server.IPEndPoint.Port, Multiplayer.Name, Multiplayer.Server.PublicServerData.ServerID, Multiplayer.Server.PublicServerData.Clients.Length);
+                    Debug.LogError(locatedMessage.Message.Message);
 
-                    return new AppMessage(1, "car-driving-multiplayer", $"{JsonUtility.ToJson(Command.New("server-info").Arg(JsonUtility.ToJson(info)))}");
+                    Debug.LogError(locatedMessage.IPEndPoint);
                 }
-                else
+
+                try
                 {
-                    return new AppMessage(1, "car-driving-multiplayer", "denied");
+                    if (locatedMessage != null && locatedMessage.Message != null)
+                    {
+                        AppMessage appMessage = locatedMessage.Message;
+
+                        if (appMessage.Name == "car-driving-multiplayer" && JsonUtility.FromJson<Command>(appMessage.Message) == Command.New("get-server-info"))
+                        {
+                            ServerInfo info = new ServerInfo(Multiplayer.Server.IPEndPoint.Port, Multiplayer.Name, Multiplayer.Server.PublicServerData.ServerID, Multiplayer.Server.PublicServerData.Clients.Length);
+
+                            return new AppMessage(1, "car-driving-multiplayer", $"{JsonUtility.ToJson(Command.New("server-info").Arg(JsonUtility.ToJson(info)))}");
+                        }
+                        else
+                        {
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+                catch(Exception e)
+                {
+                    Debug.LogError(e.Message);
+
+                    return null;
                 }
             }, 0);
         }

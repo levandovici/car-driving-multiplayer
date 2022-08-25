@@ -78,7 +78,7 @@ public class MainSceneManager : MonoBehaviour
 
         LimonadoEntertainment.EPlatform platform;
 
-#if UNITY_STANDALONE || UNITY_EDITOR
+#if UNITY_STANDALONE
 
         platform = LimonadoEntertainment.EPlatform.Standalone;
 
@@ -116,7 +116,8 @@ public class MainSceneManager : MonoBehaviour
 
         Multiplayer.StartBroadcastClient(platform, new AppMessage(1, "car-driving-multiplayer", JsonUtility.ToJson(Command.New("get-server-info"))), (lm) =>
             {
-                Debug.LogWarning(lm.Message.Message);
+                if (lm != null && lm.Message != null)
+                    Debug.LogWarning(lm.Message.Message);
 
                 if (lm != null && lm.Message != null && lm.Message.Name == "car-driving-multiplayer")
                 {

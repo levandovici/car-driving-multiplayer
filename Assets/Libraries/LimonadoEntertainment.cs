@@ -1703,14 +1703,21 @@ namespace LimonadoEntertainment
             /// <exception cref="InvalidDataException"></exception>
             public async Task SendAsync(IPEndPoint point, AppMessage message)
             {
-                var bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(message));
-
-                int result = await Socket.SendAsync(bytes, bytes.Length, point);
-
-
-                if (result != bytes.Length)
+                try
                 {
-                    throw new InvalidDataException();
+                    var bytes = Encoding.UTF8.GetBytes(JsonUtility.ToJson(message));
+
+                    int result = await Socket.SendAsync(bytes, bytes.Length, point);
+
+
+                    if (result != bytes.Length)
+                    {
+                        throw new InvalidDataException();
+                    }
+                }
+                catch
+                {
+                    DebugConsole.LogWarning("Null message");
                 }
             }
 
@@ -1991,6 +1998,11 @@ namespace LimonadoEntertainment
             /// <summary>
             /// 
             /// </summary>
+            private static Thread _BroadcastServerThread = null;
+
+            /// <summary>
+            /// 
+            /// </summary>
             private static CancellationTokenSource _BroadcastServerTaskTokenSource = null;
 
 
@@ -2040,7 +2052,12 @@ namespace LimonadoEntertainment
             /// <summary>
             /// 
             /// </summary>
-            private static Thread _BroadcastClientThread = null;
+            private static Thread _BroadcastClientSenderThread = null;
+
+            /// <summary>
+            /// 
+            /// </summary>
+            private static Thread _BroadcastClientReceiverThread = null;
 
             /// <summary>
             /// 
@@ -2142,6 +2159,8 @@ namespace LimonadoEntertainment
                     {
                         try
                         {
+                            DebugConsole.LogWarning($"{ip} - {msg}");
+
                             AppMessage appMessage = JsonUtility.FromJson<AppMessage>(msg);
 
                             LocatedMessage locatedMessage = new LocatedMessage(ip, appMessage);
@@ -2153,7 +2172,7 @@ namespace LimonadoEntertainment
                         {
                             return JsonUtility.ToJson(processMessage(new LocatedMessage(ip, null)));
                         }
-                    });
+                    }, out _BroadcastServerThread);
                 }
                 else
                 {
@@ -2223,6 +2242,11 @@ namespace LimonadoEntertainment
                 BroadcastServer = null;
 
                 DebugConsole.Log("[MULTIPLAYER] BroadcastServer stopped.");
+
+
+                _BroadcastServerThread?.Abort();
+
+                _BroadcastServerThread = null;
             }
 
             /// <summary>
@@ -2266,7 +2290,7 @@ namespace LimonadoEntertainment
             /// </summary>
             public static void StartBroadcastClient(EPlatform platform, AppMessage request, BroadcastClient.OnReceiveResponseDelegate onReceiveResponse, int receiveResponsesMilliseconds = 5000, int repeatAfterMilliseconds = 5000)
             {
-                if (_BroadcastClientTask != null || _BroadcastClientThread != null)
+                if (_BroadcastClientTask != null || _BroadcastClientSenderThread != null || _BroadcastClientReceiverThread != null)
                     return;
 
                 if ((platform & EPlatform.Windows) == EPlatform.Windows || (platform & EPlatform.Linux) == EPlatform.Linux || (platform & EPlatform.MacOS) == EPlatform.MacOS)
@@ -2309,10 +2333,12 @@ namespace LimonadoEntertainment
                 }
                 else if ((platform & EPlatform.Android) == EPlatform.Android || (platform & EPlatform.IOS) == EPlatform.IOS)
                 {
-                    StartMobileBroadcastClient(MobileBroadcastSenderPort, MobileBroadcastReceiverPort, "req", (ip, msg) =>
+                    StartMobileBroadcastClient(MobileBroadcastSenderPort, MobileBroadcastReceiverPort, JsonUtility.ToJson(request), (ip, msg) =>
                     {
                         try
                         {
+                            DebugConsole.LogWarning($"{ip} - {msg}");
+
                             AppMessage appMessage = JsonUtility.FromJson<AppMessage>(msg);
 
                             LocatedMessage locatedMessage = new LocatedMessage(ip, appMessage);
@@ -2321,9 +2347,9 @@ namespace LimonadoEntertainment
                         }
                         catch
                         {
-
+                            onReceiveResponse.Invoke(new LocatedMessage(ip, null));
                         }
-                    });
+                    }, out _BroadcastClientSenderThread, out _BroadcastClientReceiverThread);
                 }
                 else
                 {
@@ -2343,9 +2369,13 @@ namespace LimonadoEntertainment
                 _BroadcastClientTask = null;
 
 
-                _BroadcastClientThread?.Abort();
+                _BroadcastClientSenderThread?.Abort();
 
-                _BroadcastClientThread = null;
+                _BroadcastClientSenderThread = null;
+
+                _BroadcastClientReceiverThread?.Abort();
+
+                _BroadcastClientReceiverThread = null;
 
 
                 BroadcastClient?.Stop();
@@ -2358,7 +2388,7 @@ namespace LimonadoEntertainment
 
 
 
-            public static void StartMobileBroadcastClient(int senderPort, int receiverPort, string request, Action<IPEndPoint, string> onReceive)
+            public static void StartMobileBroadcastClient(int senderPort, int receiverPort, string request, Action<IPEndPoint, string> onReceive, out Thread senderThread, out Thread receiverThread)
             {
                 Thread sender = new Thread(MobileSender);
 
@@ -2375,9 +2405,14 @@ namespace LimonadoEntertainment
                     onReceive.Invoke(ip, message);
 
                 }, senderPort, receiverPort));
+
+
+                senderThread = sender;
+
+                receiverThread = receiver;
             }
 
-            public static void StartMobileBroadcastServer(int senderPort, int receiverPort, Func<IPEndPoint, string, string> onReceive)
+            public static void StartMobileBroadcastServer(int senderPort, int receiverPort, Func<IPEndPoint, string, string> onReceive, out Thread thread)
             {
                 Thread receiverRespondent = new Thread(MobileReceiverRespondent);
 
@@ -2388,6 +2423,9 @@ namespace LimonadoEntertainment
                     return Encoding.UTF8.GetBytes(onReceive(ip, message));
 
                 }, senderPort, receiverPort));
+
+
+                thread = receiverRespondent;
             }
 
 
@@ -2422,7 +2460,7 @@ namespace LimonadoEntertainment
 
                     receive.onReceive.Invoke(point, udpClient.Receive(ref point));
 
-                    Thread.Sleep(1000);
+                    Thread.Sleep(100);
                 }
             }
 
@@ -2444,7 +2482,7 @@ namespace LimonadoEntertainment
                     if (bytes != null)
                         udpClient.Send(bytes, bytes.Length, new IPEndPoint(point.Address, receive.receiverPort));
 
-                    Thread.Sleep(1000);
+                    Thread.Sleep(100);
                 }
             }
 
