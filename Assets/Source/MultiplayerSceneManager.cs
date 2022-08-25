@@ -310,17 +310,15 @@ public class MultiplayerSceneManager : GameSceneManager
 
             Multiplayer.StartServer(platform, new ServerGameData(System.Guid.NewGuid().ToString()), (locatedMessage) =>
             {
-                if (locatedMessage != null && locatedMessage.Message != null)
-                {
-                    Debug.LogError(locatedMessage.Message.Message);
-
-                    Debug.LogError(locatedMessage.IPEndPoint);
-                }
-
                 try
                 {
                     if (locatedMessage != null && locatedMessage.Message != null)
                     {
+                        Debug.Log(locatedMessage.Message.Message);
+
+                        if (locatedMessage.IPEndPoint != null)
+                            Debug.Log(locatedMessage.IPEndPoint);
+
                         AppMessage appMessage = locatedMessage.Message;
 
                         if (appMessage.Name == "car-driving-multiplayer" && JsonUtility.FromJson<Command>(appMessage.Message) == Command.New("get-server-info"))
@@ -331,21 +329,22 @@ public class MultiplayerSceneManager : GameSceneManager
                         }
                         else
                         {
-                            return null;
+                            return new AppMessage(1, "car-driving-multiplayer", "denied");
                         }
                     }
                     else
                     {
-                        return null;
+                        return new AppMessage(1, "car-driving-multiplayer", "denied");
                     }
                 }
                 catch(Exception e)
                 {
-                    Debug.LogError(e.Message);
+                    Debug.LogWarning(e.Message);
 
-                    return null;
+                    return new AppMessage(1, "car-driving-multiplayer", "denied");
+
                 }
-            }, 0);
+            }, 500);
         }
 
         if (SaveLoadManager.StartClient)
@@ -497,7 +496,7 @@ public class MultiplayerSceneManager : GameSceneManager
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError(e.Message);
+                    Debug.LogError(e);
                 }
             }
         }

@@ -115,34 +115,34 @@ public class MainSceneManager : MonoBehaviour
         };
 
         Multiplayer.StartBroadcastClient(platform, new AppMessage(1, "car-driving-multiplayer", JsonUtility.ToJson(Command.New("get-server-info"))), (lm) =>
+        {
+            if (lm != null && lm.Message != null)
+                Debug.LogWarning(lm.Message.Message);
+
+            if (lm != null && lm.Message != null && lm.Message.Name == "car-driving-multiplayer")
             {
-                if (lm != null && lm.Message != null)
-                    Debug.LogWarning(lm.Message.Message);
-
-                if (lm != null && lm.Message != null && lm.Message.Name == "car-driving-multiplayer")
+                try
                 {
-                    try
+                    Command command = JsonUtility.FromJson<Command>(lm.Message.Message);
+
+                    if (command == Command.New("server-info") && command.Arguments.Length > 1)
                     {
-                        Command command = JsonUtility.FromJson<Command>(lm.Message.Message);
+                        ServerInfo serverInfo = JsonUtility.FromJson<ServerInfo>(command.Arguments[1]);
 
-                        if (command == Command.New("server-info") && command.Arguments.Length > 1)
+                        Debug.Log(lm.IPEndPoint);
+
+                        if (_stack.Count() < _max_stack_length)
                         {
-                            ServerInfo serverInfo = JsonUtility.FromJson<ServerInfo>(command.Arguments[1]);
-
-                            Debug.Log(lm.IPEndPoint);
-
-                            if (_stack.Count() < _max_stack_length)
-                            {
-                                _stack.Push(new LocatedServerInfo(serverInfo, lm.IPEndPoint));
-                            }
+                            _stack.Push(new LocatedServerInfo(serverInfo, lm.IPEndPoint));
                         }
                     }
-                    catch (Exception e)
-                    {
-                        Debug.LogError($"[ERROR][ReceiveServerInfo][{e.Message}]");
-                    }
                 }
-            });
+                catch (Exception e)
+                {
+                    Debug.LogError($"[ERROR][ReceiveServerInfo][{e.Message}]");
+                }
+            }
+        });
 
         StartCoroutine(CheckServerInfoStack());
     }

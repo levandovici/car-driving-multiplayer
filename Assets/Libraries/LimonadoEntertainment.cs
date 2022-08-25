@@ -125,7 +125,7 @@ namespace LimonadoEntertainment
         [Serializable]
         public sealed class JsonStorage : IJsonStorage
         {
-            private string _json;
+            public string json;
 
             private object _json_lock;
 
@@ -137,7 +137,7 @@ namespace LimonadoEntertainment
                 {
                     lock (_json_lock)
                     {
-                        return _json;
+                        return json;
                     }
                 }
 
@@ -145,7 +145,7 @@ namespace LimonadoEntertainment
                 {
                     lock (_json_lock)
                     {
-                        _json = value;
+                        json = value;
                     }
                 }
             }
@@ -154,14 +154,14 @@ namespace LimonadoEntertainment
 
             public JsonStorage()
             {
-                _json = "";
+                json = "";
 
                 _json_lock = new object();
             }
 
             public JsonStorage(string json)
             {
-                _json = json;
+                this.json = json;
 
                 _json_lock = new object();
             }
@@ -1970,9 +1970,9 @@ namespace LimonadoEntertainment
             /// </summary>
             public static PortRange BroadcastPortRange = new PortRange(60000, 60128);
 
-            public static int MobileBroadcastSenderPort = 49001;
+            public static int MobileBroadcastServerPort = 49001;
 
-            public static int MobileBroadcastReceiverPort = 49002;
+            public static int MobileBroadcastClientPort = 49002;
 
 
             /// <summary>
@@ -1998,11 +1998,6 @@ namespace LimonadoEntertainment
             /// <summary>
             /// 
             /// </summary>
-            private static Thread _BroadcastServerThread = null;
-
-            /// <summary>
-            /// 
-            /// </summary>
             private static CancellationTokenSource _BroadcastServerTaskTokenSource = null;
 
 
@@ -2014,55 +2009,22 @@ namespace LimonadoEntertainment
             /// <summary>
             /// 
             /// </summary>
-            /// <returns>True if BroadcastClient locating Response from Server, otherwise False.</returns>
-            public static bool BroadcastClientLocating
-            {
-                get
-                {
-                    lock (_BroadcastClientLocatingLock)
-                    {
-                        return _BroadcastClientLocating;
-                    }
-                }
-
-                private set
-                {
-                    lock (_BroadcastClientLocatingLock)
-                    {
-                        _BroadcastClientLocating = value;
-                    }
-                }
-            }
-
-            /// <summary>
-            /// 
-            /// </summary>
-            private static bool _BroadcastClientLocating = false;
-
-            /// <summary>
-            /// 
-            /// </summary>
-            private static readonly object _BroadcastClientLocatingLock = new object();
-
-            /// <summary>
-            /// 
-            /// </summary>
             private static Task _BroadcastClientTask = null;
 
             /// <summary>
             /// 
             /// </summary>
-            private static Thread _BroadcastClientSenderThread = null;
-
-            /// <summary>
-            /// 
-            /// </summary>
-            private static Thread _BroadcastClientReceiverThread = null;
-
-            /// <summary>
-            /// 
-            /// </summary>
             private static CancellationTokenSource _BroadcastClientTaskTokenSource = null;
+
+            /// <summary>
+            /// 
+            /// </summary>
+            private static MobileBroadcastClient _MobileBroadcastClient = null;
+
+            /// <summary>
+            /// 
+            /// </summary>
+            private static MobileBroadcastServer _MobileBroadcastServer = null;
 
 
             /// <summary>
@@ -2115,7 +2077,7 @@ namespace LimonadoEntertainment
             /// 
             /// </summary>
             /// <param name="serverGameData"></param>
-            public static void StartServer(EPlatform platform, ServerGameData serverGameData, BroadcastServer.ProcessMessageDelegate processMessage, int receiveRequestsDelayMilliseconds = 100)
+            public static void StartServer(EPlatform platform, ServerGameData serverGameData, BroadcastServer.ProcessMessageDelegate processMessage, int receiveRequestsDelayMilliseconds = 500)
             {
                 if (IsServer)
                     return;
@@ -2155,24 +2117,28 @@ namespace LimonadoEntertainment
                 }
                 else if ((platform & EPlatform.Android) == EPlatform.Android || (platform & EPlatform.IOS) == EPlatform.IOS)
                 {
-                    StartMobileBroadcastServer(MobileBroadcastSenderPort, MobileBroadcastReceiverPort, (ip, msg) =>
+                    _MobileBroadcastServer = new MobileBroadcastServer();
+
+
+
+                    _MobileBroadcastServer.Start(MobileBroadcastClientPort, MobileBroadcastServerPort, receiveRequestsDelayMilliseconds, (ip, msg) =>
                     {
                         try
                         {
-                            DebugConsole.LogWarning($"{ip} - {msg}");
+                            DebugConsole.LogWarning($"{ip} - {msg.Length}");
 
-                            AppMessage appMessage = JsonUtility.FromJson<AppMessage>(msg);
+                            AppMessage appMessage = JsonUtility.FromJson<AppMessage>(Encoding.UTF8.GetString(msg));
 
                             LocatedMessage locatedMessage = new LocatedMessage(ip, appMessage);
 
 
-                            return JsonUtility.ToJson(processMessage.Invoke(locatedMessage));
+                            return Encoding.UTF8.GetBytes(JsonUtility.ToJson(processMessage.Invoke(locatedMessage)));
                         }
                         catch
                         {
-                            return JsonUtility.ToJson(processMessage(new LocatedMessage(ip, null)));
+                            return Encoding.UTF8.GetBytes(JsonUtility.ToJson(processMessage(new LocatedMessage(ip, null))));
                         }
-                    }, out _BroadcastServerThread);
+                    });
                 }
                 else
                 {
@@ -2244,9 +2210,9 @@ namespace LimonadoEntertainment
                 DebugConsole.Log("[MULTIPLAYER] BroadcastServer stopped.");
 
 
-                _BroadcastServerThread?.Abort();
+                _MobileBroadcastServer?.Stop();
 
-                _BroadcastServerThread = null;
+                _MobileBroadcastServer = null;
             }
 
             /// <summary>
@@ -2290,7 +2256,7 @@ namespace LimonadoEntertainment
             /// </summary>
             public static void StartBroadcastClient(EPlatform platform, AppMessage request, BroadcastClient.OnReceiveResponseDelegate onReceiveResponse, int receiveResponsesMilliseconds = 5000, int repeatAfterMilliseconds = 5000)
             {
-                if (_BroadcastClientTask != null || _BroadcastClientSenderThread != null || _BroadcastClientReceiverThread != null)
+                if (_BroadcastClientTask != null)
                     return;
 
                 if ((platform & EPlatform.Windows) == EPlatform.Windows || (platform & EPlatform.Linux) == EPlatform.Linux || (platform & EPlatform.MacOS) == EPlatform.MacOS)
@@ -2309,8 +2275,6 @@ namespace LimonadoEntertainment
                         {
                             token.ThrowIfCancellationRequested();
 
-                            BroadcastClientLocating = true;
-
                             IPAddress[] masks = null;
 
                             bool success = Lan.TryGetLocalIPv4Masks(platform, out masks);
@@ -2322,8 +2286,6 @@ namespace LimonadoEntertainment
                             
                             await BroadcastClient.BroadcastRequestAsync(IPAddress.Broadcast, BroadcastPortRange, request, onReceiveResponse, receiveResponsesMilliseconds);
 
-                            BroadcastClientLocating = false;
-
                             token.ThrowIfCancellationRequested();
 
                             await Task.Delay(repeatAfterMilliseconds, _BroadcastClientTaskTokenSource.Token);
@@ -2333,13 +2295,17 @@ namespace LimonadoEntertainment
                 }
                 else if ((platform & EPlatform.Android) == EPlatform.Android || (platform & EPlatform.IOS) == EPlatform.IOS)
                 {
-                    StartMobileBroadcastClient(MobileBroadcastSenderPort, MobileBroadcastReceiverPort, JsonUtility.ToJson(request), (ip, msg) =>
+                    _MobileBroadcastClient = new MobileBroadcastClient();
+
+                    _MobileBroadcastClient.Start(MobileBroadcastClientPort, 
+                        MobileBroadcastServerPort,Encoding.UTF8.GetBytes(JsonUtility.ToJson(request)), repeatAfterMilliseconds, 500, 
+                        (ip, msg) =>
                     {
                         try
                         {
-                            DebugConsole.LogWarning($"{ip} - {msg}");
+                            DebugConsole.LogWarning($"{ip} - {Encoding.UTF8.GetString(msg)}");
 
-                            AppMessage appMessage = JsonUtility.FromJson<AppMessage>(msg);
+                            AppMessage appMessage = JsonUtility.FromJson<AppMessage>(Encoding.UTF8.GetString(msg));
 
                             LocatedMessage locatedMessage = new LocatedMessage(ip, appMessage);
 
@@ -2349,7 +2315,7 @@ namespace LimonadoEntertainment
                         {
                             onReceiveResponse.Invoke(new LocatedMessage(ip, null));
                         }
-                    }, out _BroadcastClientSenderThread, out _BroadcastClientReceiverThread);
+                    });
                 }
                 else
                 {
@@ -2369,183 +2335,14 @@ namespace LimonadoEntertainment
                 _BroadcastClientTask = null;
 
 
-                _BroadcastClientSenderThread?.Abort();
-
-                _BroadcastClientSenderThread = null;
-
-                _BroadcastClientReceiverThread?.Abort();
-
-                _BroadcastClientReceiverThread = null;
-
-
                 BroadcastClient?.Stop();
 
                 BroadcastClient = null;
 
 
-                BroadcastClientLocating = false;
-            }
+                _MobileBroadcastClient?.Stop();
 
-
-
-            public static void StartMobileBroadcastClient(int senderPort, int receiverPort, string request, Action<IPEndPoint, string> onReceive, out Thread senderThread, out Thread receiverThread)
-            {
-                Thread sender = new Thread(MobileSender);
-
-                sender.Start(new SendData(Encoding.UTF8.GetBytes(request), senderPort, receiverPort));
-
-
-
-                Thread receiver = new Thread(MobileReceiver);
-
-                receiver.Start(new ReceiveData((ip, msg) =>
-                {
-                    string message = Encoding.UTF8.GetString(msg);
-
-                    onReceive.Invoke(ip, message);
-
-                }, senderPort, receiverPort));
-
-
-                senderThread = sender;
-
-                receiverThread = receiver;
-            }
-
-            public static void StartMobileBroadcastServer(int senderPort, int receiverPort, Func<IPEndPoint, string, string> onReceive, out Thread thread)
-            {
-                Thread receiverRespondent = new Thread(MobileReceiverRespondent);
-
-                receiverRespondent.Start(new ReceiveRespondentData((ip, msg) =>
-                {
-                    string message = Encoding.UTF8.GetString(msg);
-
-                    return Encoding.UTF8.GetBytes(onReceive(ip, message));
-
-                }, senderPort, receiverPort));
-
-
-                thread = receiverRespondent;
-            }
-
-
-
-            private static void MobileSender(object data)
-            {
-                SendData send = (SendData)data;
-
-                UdpClient udpClient = new UdpClient(send.senderPort);
-
-                udpClient.EnableBroadcast = true;
-
-                while (true)
-                {
-                    udpClient.Send(send.message, send.message.Length, new IPEndPoint(IPAddress.Broadcast, send.receiverPort));
-
-                    Thread.Sleep(1000);
-                }
-            }
-
-            private static void MobileReceiver(object data)
-            {
-                ReceiveData receive = (ReceiveData)data;
-
-                UdpClient udpClient = new UdpClient(receive.receiverPort);
-
-                IPEndPoint point = null;
-
-                while (true)
-                {
-                    point = new IPEndPoint(IPAddress.Any, receive.senderPort);
-
-                    receive.onReceive.Invoke(point, udpClient.Receive(ref point));
-
-                    Thread.Sleep(100);
-                }
-            }
-
-
-            private static void MobileReceiverRespondent(object data)
-            {
-                ReceiveRespondentData receive = (ReceiveRespondentData)data;
-
-                UdpClient udpClient = new UdpClient(receive.receiverPort);
-
-                IPEndPoint point = null;
-
-                while (true)
-                {
-                    point = new IPEndPoint(IPAddress.Any, receive.senderPort);
-
-                    byte[] bytes = receive.onReceive.Invoke(point, udpClient.Receive(ref point));
-
-                    if (bytes != null)
-                        udpClient.Send(bytes, bytes.Length, new IPEndPoint(point.Address, receive.receiverPort));
-
-                    Thread.Sleep(100);
-                }
-            }
-
-
-
-            internal struct SendData
-            {
-                public byte[] message;
-
-                public int senderPort;
-
-                public int receiverPort;
-
-
-
-                public SendData(byte[] message, int senderPort, int receiverPort)
-                {
-                    this.message = message;
-
-                    this.senderPort = senderPort;
-
-                    this.receiverPort = receiverPort;
-                }
-            }
-
-            internal struct ReceiveData
-            {
-                public Action<IPEndPoint, byte[]> onReceive;
-
-                public int senderPort;
-
-                public int receiverPort;
-
-
-
-                public ReceiveData(Action<IPEndPoint, byte[]> onReceive, int senderPort, int receiverPort)
-                {
-                    this.onReceive = onReceive;
-
-                    this.senderPort = senderPort;
-
-                    this.receiverPort = receiverPort;
-                }
-            }
-
-            internal struct ReceiveRespondentData
-            {
-                public Func<IPEndPoint, byte[], byte[]> onReceive;
-
-                public int senderPort;
-
-                public int receiverPort;
-
-
-
-                public ReceiveRespondentData(Func<IPEndPoint, byte[], byte[]> onReceive, int senderPort, int receiverPort)
-                {
-                    this.onReceive = onReceive;
-
-                    this.senderPort = senderPort;
-
-                    this.receiverPort = receiverPort;
-                }
+                _MobileBroadcastClient = null;
             }
         }
 
@@ -3845,6 +3642,176 @@ namespace LimonadoEntertainment
                 await Task.Delay(receiveResponsesMilliseconds);
 
                 cancellationTokenSource.Cancel();
+            }
+        }
+
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public class MobileBroadcastClient
+        {
+            private UdpClient _client = null;
+
+            private CancellationTokenSource _source = null;
+
+            private Task _sender = null;
+
+            private Task _receiver = null;
+
+
+
+            public void Start(int clientPort, int serverPort, byte[] request, int sendDelayMilliseconds, int receiveDelayMilliseconds, Action<IPEndPoint, byte[]> onReceive)
+            {
+                if (_client != null || _source != null || _sender != null || _receiver != null)
+                    return;
+
+
+                _source = new CancellationTokenSource();
+
+                CancellationToken token = _source.Token;
+
+
+                _client = new UdpClient(clientPort);
+
+                _client.EnableBroadcast = true;
+
+
+                _sender = Task.Run(() =>
+                {
+                    while (true)
+                    {
+                        token.ThrowIfCancellationRequested();
+
+                        var count = _client.Send(request, request.Length, new IPEndPoint(IPAddress.Broadcast, serverPort));
+
+                        token.ThrowIfCancellationRequested();
+
+                        Task.Delay(sendDelayMilliseconds).Wait();
+                    }
+
+                }, token);
+
+                _receiver = Task.Run(() =>
+                {
+                    while (true)
+                    {
+                        token.ThrowIfCancellationRequested();
+
+                        var point = new IPEndPoint(IPAddress.Any, serverPort);
+
+                        var bytes = _client.Receive(ref point);
+
+                        token.ThrowIfCancellationRequested();
+
+                        onReceive(point, bytes);
+
+                        Task.Delay(receiveDelayMilliseconds).Wait();
+                    }
+
+                }, token);
+            }
+
+            public void Stop()
+            {
+                _source?.Cancel();
+
+                _client?.Close();
+
+
+                _source = null;
+
+                _sender = null;
+
+                _receiver = null;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public class MobileBroadcastServer
+        {
+            private UdpClient _server = null;
+
+            private CancellationTokenSource _source = null;
+
+            private Task _task = null;
+
+
+
+            public void Start(int clientPort, int serverPort, int delayMilliseconds, Func<IPEndPoint, byte[], byte[]> onReceive)
+            {
+                if (_server != null || _source != null || _task != null)
+                    return;
+
+
+                _source = new CancellationTokenSource();
+
+                CancellationToken token = _source.Token;
+
+
+                _server = new UdpClient(serverPort);
+
+                _server.EnableBroadcast = true;
+                
+
+                _task = Task.Run(() =>
+                {
+                    while (true)
+                    {
+                        token.ThrowIfCancellationRequested();
+
+                        IPEndPoint point = null;
+
+                        byte[] bytes = null;
+
+                        try
+                        {
+                            point = new IPEndPoint(IPAddress.Any, clientPort);
+
+                            bytes = _server.Receive(ref point);
+                        }
+                        catch(Exception e)
+                        {
+                            DebugConsole.LogError(e.Message);
+                        }
+
+                        token.ThrowIfCancellationRequested();
+
+                        try
+                        {
+                            bytes = onReceive(point, bytes);
+
+                            if (bytes != null && bytes.Length > 0)
+                            {
+                                var count = _server.Send(bytes, bytes.Length, point);
+                            }
+                        }
+                        catch(Exception e)
+                        {
+                            DebugConsole.LogError(e.Message);
+                        }
+
+                        Task.Delay(delayMilliseconds).Wait();
+                    }
+
+                }, token);
+            }
+
+            public void Stop()
+            {
+                _source?.Cancel();
+
+                _server?.Close();
+
+
+                _server = null;
+
+                _source = null;
+
+                _task = null;
             }
         }
     }
