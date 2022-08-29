@@ -12,6 +12,9 @@ public class MainUI : UIPanel
     [SerializeField]
     private Button _multiplayer;
 
+    [SerializeField]
+    private Button _pirvacy_policy;
+
 
 
     public event Action OnClickSingleplayer;
@@ -25,6 +28,8 @@ public class MainUI : UIPanel
         _singleplayer.onClick.AddListener(() => OnClickSingleplayer.Invoke());
 
         _multiplayer.onClick.AddListener(() => OnClickMultiplayer.Invoke());
+
+        _pirvacy_policy.onClick.AddListener(() => Application.OpenURL("https://unity.com/legal/privacy-policy"));
     }
 
 
@@ -34,5 +39,7 @@ public class MainUI : UIPanel
         _singleplayer.onClick.RemoveAllListeners();
 
         _multiplayer.onClick.RemoveAllListeners();
+
+        _pirvacy_policy.onClick.RemoveAllListeners();
     }
 }
