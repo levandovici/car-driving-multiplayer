@@ -29,7 +29,7 @@ public class MainUI : UIPanel
 
         _multiplayer.onClick.AddListener(() => OnClickMultiplayer.Invoke());
 
-        _pirvacy_policy.onClick.AddListener(() => Application.OpenURL("https://unity.com/legal/privacy-policy"));
+        _pirvacy_policy.onClick.AddListener(() => Application.OpenURL("https://limonado.nikitalnc.com/legal/car-driving-multiplayer/"));
     }
 
 
