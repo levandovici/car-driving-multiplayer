@@ -6,6 +6,10 @@ using System;
 
 public class MainUI : UIPanel
 {
+    private const string PRIVACY_POLICY = "https://limonado-entertainment.jimdosite.com/privacy.policy/";
+
+
+
     [SerializeField]
     private Button _singleplayer;
 
@@ -29,7 +33,7 @@ public class MainUI : UIPanel
 
         _multiplayer.onClick.AddListener(() => OnClickMultiplayer.Invoke());
 
-        _pirvacy_policy.onClick.AddListener(() => Application.OpenURL("https://limonado.nikitalnc.com/legal/car-driving-multiplayer/"));
+        _pirvacy_policy.onClick.AddListener(() => Application.OpenURL(PRIVACY_POLICY));
     }
 
 
