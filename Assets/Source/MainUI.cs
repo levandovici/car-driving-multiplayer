@@ -6,7 +6,7 @@ using System;
 
 public class MainUI : UIPanel
 {
-    private const string PRIVACY_POLICY = "https://limonado-entertainment.jimdosite.com/privacy.policy/";
+    private const string PRIVACY_POLICY = "https://games.limonadoent.com/privacy-policy.html";
 
 
 

@@ -411,7 +411,7 @@ public class VehicleControl : MonoBehaviour
             collision.transform.root.GetComponent<VehicleControl>().slip2 = Mathf.Clamp(collision.relativeVelocity.magnitude, 0.0f, 10.0f);
 
             myRigidbody.angularVelocity = new Vector3(-myRigidbody.angularVelocity.x * 0.5f, myRigidbody.angularVelocity.y * 0.5f, -myRigidbody.angularVelocity.z * 0.5f);
-            myRigidbody.velocity = new Vector3(myRigidbody.velocity.x, myRigidbody.velocity.y * 0.5f, myRigidbody.velocity.z);
+            myRigidbody.linearVelocity = new Vector3(myRigidbody.linearVelocity.x, myRigidbody.linearVelocity.y * 0.5f, myRigidbody.linearVelocity.z);
 
 
         }
@@ -467,7 +467,7 @@ public class VehicleControl : MonoBehaviour
 
 
         // speed of car
-        speed = myRigidbody.velocity.magnitude * 2.7f;
+        speed = myRigidbody.linearVelocity.magnitude * 2.7f;
 
 
 
