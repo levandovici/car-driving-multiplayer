@@ -6,44 +6,52 @@ using System;
 
 public class MainUI : UIPanel
 {
-    private const string PRIVACY_POLICY = "https://games.limonadoent.com/privacy-policy.html";
-
-
+    [SerializeField]
+    private Text _money;
 
     [SerializeField]
-    private Button _singleplayer;
+    private Button _settings;
 
     [SerializeField]
-    private Button _multiplayer;
+    private Button _shop;
 
     [SerializeField]
-    private Button _pirvacy_policy;
+    private Button _play;
 
 
 
-    public event Action OnClickSingleplayer;
+    public event Action OnSettings;
 
-    public event Action OnClickMultiplayer;
+    public event Action OnShop;
+
+    public event Action OnPlay;
 
 
 
     private void Awake()
     {
-        _singleplayer.onClick.AddListener(() => OnClickSingleplayer.Invoke());
+        _settings.onClick.AddListener(() => OnSettings?.Invoke());
 
-        _multiplayer.onClick.AddListener(() => OnClickMultiplayer.Invoke());
+        _shop.onClick.AddListener(() => OnShop?.Invoke());
 
-        _pirvacy_policy.onClick.AddListener(() => Application.OpenURL(PRIVACY_POLICY));
+        _play.onClick.AddListener(() => OnPlay?.Invoke());
+    }
+
+
+
+    public void Setup(int money)
+    {
+        _money.text = $"{money}";
     }
 
 
 
     private void OnDestroy()
     {
-        _singleplayer.onClick.RemoveAllListeners();
+        _settings.onClick.RemoveAllListeners();
 
-        _multiplayer.onClick.RemoveAllListeners();
+        _shop.onClick.RemoveAllListeners();
 
-        _pirvacy_policy.onClick.RemoveAllListeners();
+        _play.onClick.RemoveAllListeners();
     }
 }

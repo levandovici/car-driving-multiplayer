@@ -19,8 +19,20 @@ using System.Text;
 
 public class MainSceneManager : MonoBehaviour
 {
+    private const string PRIVACY = "https://games.michitai.com/privacy-policy.html";
+
+    private const string TERMS = "https://games.michitai.com/terms-and-conditions.html";
+
+
+
     [SerializeField]
     private MainUIManager _mainUIManager;
+
+    [SerializeField]
+    private CarsController _carsController;
+
+    [SerializeField]
+    private SoundController _soundController;
 
 
 
@@ -38,6 +50,10 @@ public class MainSceneManager : MonoBehaviour
 
     private int _max_stack_length = 256;
 
+    private LimonadoEntertainment.EPlatform _platform;
+
+    private int _shopIndex = -1;
+
 
 
     private void SetUpHost()
@@ -52,49 +68,74 @@ public class MainSceneManager : MonoBehaviour
 
     private void Awake()
     {
-        _mainUIManager.MainUI.OnClickSingleplayer += () =>
+        InitialisePlatform();
+
+        InitialiseUI();
+
+        InitialiseDebug();
+
+        InitialiseMultiplayer();
+
+        InitialiseCarsController();
+
+        _soundController.SetupSFX(SaveLoadManager.PlayerData.sfxVolume);
+
+        _soundController.SetupMusic(SaveLoadManager.PlayerData.musicVolume);
+    }
+
+    private void Update()
+    {
+#if UNITY_EDITOR
+        if(Input.GetKeyDown(KeyCode.M))
         {
-            SceneManager.LoadScene(1);
-        };
+            SaveLoadManager.PlayerData.money += 5000;
 
-        DebugConsole.Enabled = true;
+            OnChangePanel(_mainUIManager.Current);
+        }
+#endif
+    }
 
-        DebugConsole.OnLog += (log) =>
-        {
-            Debug.Log(log);
-        };
-
-        DebugConsole.OnLogWarning += (log) =>
-        {
-            Debug.LogWarning(log);
-        };
-
-        DebugConsole.OnLogError += (log) =>
-        {
-            Debug.LogError(log);
-        };
-
-        SetUpHost();
-
-        LimonadoEntertainment.EPlatform platform;
-
+    private void InitialisePlatform()
+    {
 #if UNITY_STANDALONE
 
         platform = LimonadoEntertainment.EPlatform.Standalone;
 
 #elif UNITY_ANDROID
 
-        platform = LimonadoEntertainment.EPlatform.Android;
+        _platform = LimonadoEntertainment.EPlatform.Android;
 
 #endif
+    }
 
-        _mainUIManager.MainUI.OnClickMultiplayer += () =>
+    private void InitialiseUI()
+    {
+        _mainUIManager.OnChangePanel += OnChangePanel;
+
+
+        _mainUIManager.Shop.OnLeft += OnShopLeft;
+
+        _mainUIManager.Shop.OnRight += OnShopRight;
+
+        _mainUIManager.Shop.OnSelect += OnShopSelect;
+
+        _mainUIManager.Shop.OnBuy += OnShopBuy;
+
+        _mainUIManager.Shop.OnBack += OnShopBack;
+
+
+        _mainUIManager.Play.OnSingleplayer += () =>
+        {
+            SceneManager.LoadScene(1);
+        };
+
+        _mainUIManager.Play.OnMultiplayer += () =>
         {
             Multiplayer.StopBroadcastClient();
 
             IPAddress[] ips = null;
 
-            bool success = Lan.TryGetLocalIPv4Addresses(platform, out ips);
+            bool success = Lan.TryGetLocalIPv4Addresses(_platform, out ips);
 
             Multiplayer.Name = "Car Driving Multiplayer";
 
@@ -114,7 +155,43 @@ public class MainSceneManager : MonoBehaviour
             UnityEngine.SceneManagement.SceneManager.LoadScene(2);
         };
 
-        Multiplayer.StartBroadcastClient(platform, new AppMessage(1, "car-driving-multiplayer", JsonUtility.ToJson(Command.New("get-server-info"))), (lm) =>
+
+        _mainUIManager.Settings.OnSfxChanged += OnSfxChanged;
+
+        _mainUIManager.Settings.OnMusicChanged += OnMusicChanged;
+
+        _mainUIManager.Settings.OnPrivacy += () => Application.OpenURL(PRIVACY);
+
+        _mainUIManager.Settings.OnTerms += () => Application.OpenURL(TERMS);
+
+        _mainUIManager.Settings.OnBack += () => SaveLoadManager.Save();
+    }
+
+    private void InitialiseDebug()
+    {
+        DebugConsole.Enabled = true;
+
+        DebugConsole.OnLog += (log) =>
+        {
+            Debug.Log(log);
+        };
+
+        DebugConsole.OnLogWarning += (log) =>
+        {
+            Debug.LogWarning(log);
+        };
+
+        DebugConsole.OnLogError += (log) =>
+        {
+            Debug.LogError(log);
+        };
+    }
+
+    private void InitialiseMultiplayer()
+    {
+        SetUpHost();
+
+        Multiplayer.StartBroadcastClient(_platform, new AppMessage(1, "car-driving-multiplayer", JsonUtility.ToJson(Command.New("get-server-info"))), (lm) =>
         {
             if (lm != null && lm.Message != null)
                 Debug.LogWarning(lm.Message.Message);
@@ -145,6 +222,146 @@ public class MainSceneManager : MonoBehaviour
         });
 
         StartCoroutine(CheckServerInfoStack());
+    }
+
+    private void InitialiseCarsController()
+    {
+        _carsController.Setup(SaveLoadManager.PlayerData.carIndex);
+    }
+
+
+
+    private void OnChangePanel(MainUIManager.EPanel panel)
+    {
+        switch(panel)
+        {
+            case MainUIManager.EPanel.Main:
+                OnSetupMain();
+                break;
+
+            case MainUIManager.EPanel.Shop:
+                OnSetupShop();
+                break;
+
+            case MainUIManager.EPanel.Play:
+                OnSetupPlay();
+                break;
+
+            case MainUIManager.EPanel.Settings:
+                OnSetupSettings();
+                break;
+        }
+    }
+
+    private void OnSetupMain()
+    {
+        _mainUIManager.Main.Setup(SaveLoadManager.PlayerData.money);
+    }
+
+    private void OnSetupShop()
+    {
+        _mainUIManager.Shop.Setup(SaveLoadManager.PlayerData.money);
+
+        if(_shopIndex == -1)
+        {
+            _shopIndex = SaveLoadManager.PlayerData.carIndex;
+        }
+
+        bool isBought = SaveLoadManager.PlayerData.carsInfo[_shopIndex].isBought;
+
+        CarSetup setup = Resources.Load<CarSetup>($"Car-{_shopIndex + 1}");
+
+        _mainUIManager.Shop.Setup(_shopIndex > 0, _shopIndex + 1 < CarSetup.CarsCount, isBought, setup.Price, _shopIndex == SaveLoadManager.PlayerData.carIndex);
+
+        _carsController.Setup(_shopIndex);
+    }
+
+    private void OnSetupPlay()
+    {
+        _mainUIManager.Play.Setup(SaveLoadManager.PlayerData.money);
+    }
+
+    private void OnSetupSettings()
+    {
+        _mainUIManager.Settings.Setup(SaveLoadManager.PlayerData.sfxVolume, SaveLoadManager.PlayerData.musicVolume);
+    }
+
+
+
+    private void OnShopLeft()
+    {
+        if (_shopIndex > 0)
+        {
+            _shopIndex--;
+
+            OnSetupShop();
+        }
+    }
+
+    private void OnShopRight()
+    {
+        if(_shopIndex + 1 < CarSetup.CarsCount)
+        {
+            _shopIndex++;
+
+            OnSetupShop();
+        }
+    }
+
+    private void OnShopSelect()
+    {
+        if (SaveLoadManager.PlayerData.carsInfo[_shopIndex].isBought)
+        {
+            SaveLoadManager.PlayerData.carIndex = _shopIndex;
+
+            SaveLoadManager.Save();
+
+            OnSetupShop();
+        }
+    }
+
+    private void OnShopBuy()
+    {
+        if (!SaveLoadManager.PlayerData.carsInfo[_shopIndex].isBought)
+        {
+            CarSetup setup = Resources.Load<CarSetup>($"Car-{_shopIndex + 1}");
+
+            if (SaveLoadManager.PlayerData.money >= setup.Price)
+            {
+                SaveLoadManager.PlayerData.money -= setup.Price;
+
+                SaveLoadManager.PlayerData.carsInfo[_shopIndex].isBought = true;
+
+                SaveLoadManager.Save();
+
+                OnSetupShop();
+            }
+        }
+    }
+
+    private void OnShopBack()
+    {
+        if (!SaveLoadManager.PlayerData.carsInfo[_shopIndex].isBought || 
+            SaveLoadManager.PlayerData.carIndex != _shopIndex)
+        {
+            _shopIndex = SaveLoadManager.PlayerData.carIndex;
+
+            _carsController.Setup(_shopIndex);
+        }
+    }
+
+    private void OnSfxChanged(float volume)
+    {
+        SaveLoadManager.PlayerData.sfxVolume = volume;
+
+        _soundController.SetupSFX(volume);
+    }
+
+    private void OnMusicChanged(float volume)
+    {
+        SaveLoadManager.PlayerData.musicVolume = volume;
+
+        _soundController.SetupMusic(volume);
     }
 
 

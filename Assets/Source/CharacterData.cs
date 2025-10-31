@@ -83,6 +83,8 @@ public class CharacterData
 
     public bool _lights;
 
+    public int _carIndex;
+
 
 
     public float PositionX
@@ -502,13 +504,27 @@ public class CharacterData
         }
     }
 
+    public int CarIndex
+    {
+        get
+        {
+            return _carIndex;
+        }
+
+        set
+        {
+            _carIndex = value;
+        }
+    }
+
 
 
     public CharacterData Clone => new CharacterData(PositionX, PositionY, PositionZ, RotationX, RotationY, RotationZ,
                                                     FLPositionX, FLPositionY, FLPositionZ, FLRotationX, FLRotationY, FLRotationZ,
                                                     FRPositionX, FRPositionY, FRPositionZ, FRRotationX, FRRotationY, FRRotationZ,
                                                     BLPositionX, BLPositionY, BLPositionZ, BLRotationX, BLRotationY, BLRotationZ,
-                                                    BRPositionX, BRPositionY, BRPositionZ, BRRotationX, BRRotationY, BRRotationZ, Lights);
+                                                    BRPositionX, BRPositionY, BRPositionZ, BRRotationX, BRRotationY, BRRotationZ, 
+                                                    Lights, CarIndex);
 
 
 
@@ -521,7 +537,8 @@ public class CharacterData
                          float flpx, float flpy, float flpz, float flrx, float flry, float flrz,
                          float frpx, float frpy, float frpz, float frrx, float frry, float frrz,
                          float blpx, float blpy, float blpz, float blrx, float blry, float blrz,
-                         float brpx, float brpy, float brpz, float brrx, float brry, float brrz, bool lights)
+                         float brpx, float brpy, float brpz, float brrx, float brry, float brrz, 
+                         bool lights, int carIndex)
     {
         PositionX = px;
 
@@ -598,5 +615,7 @@ public class CharacterData
 
 
         Lights = lights;
+
+        CarIndex = carIndex;
     }
 }

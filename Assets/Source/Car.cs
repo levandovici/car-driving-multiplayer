@@ -48,8 +48,26 @@ public class Car : MonoBehaviour
 
 
 
-    private void Awake()
+    public void Setup(GameObject car, VehicleControl control, PoliceLights lights = null)
     {
-        
+        _car = car;
+
+        _vehicleControl = control;
+
+        _policeLights = lights;
+
+
+        _vehicleCamera.target = car.transform;
+    }
+
+    public void Setup(Transform FL, Transform FR, Transform BL, Transform BR)
+    {
+        _wheel_fl = FL;
+
+        _wheel_fr = FR;
+
+        _wheel_bl = BL;
+
+        _wheel_br = BR;
     }
 }

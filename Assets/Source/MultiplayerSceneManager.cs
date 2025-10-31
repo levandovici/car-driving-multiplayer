@@ -29,10 +29,6 @@ public class MultiplayerSceneManager : GameSceneManager
 
 
     [SerializeField]
-    private PlayerCar _carPrefab;
-
-
-    [SerializeField]
     private Vector3 _position = Vector3.zero;
 
     [SerializeField]
@@ -123,7 +119,8 @@ public class MultiplayerSceneManager : GameSceneManager
 
                         Debug.Log($"[SERVER-ID][{arg}]");
 
-                        string data = JsonUtility.ToJson(new GameData(new CharacterData(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, false)));
+                        string data = JsonUtility.ToJson(new GameData(new CharacterData(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 
+                            false, SaveLoadManager.PlayerData.carIndex)));
 
                         Multiplayer.Client.GameData = new JsonStorage(data);
 
@@ -384,7 +381,7 @@ public class MultiplayerSceneManager : GameSceneManager
         _br_rotation = _car.BR.localEulerAngles;
 
 
-        _lights = _car.PoliceLights.activeLight;
+        _lights = _car.PoliceLights != null ? _car.PoliceLights.activeLight : false;
 
 
 
@@ -412,7 +409,7 @@ public class MultiplayerSceneManager : GameSceneManager
                     {
                         Terminal commands = Terminal.New();
 
-                        commands.Next("set-game-data").Arg($"{JsonUtility.ToJson(new GameData(new CharacterData(_position.x, _position.y, _position.z, _rotation.x, _rotation.y, _rotation.z, _fl_position.x, _fl_position.y, _fl_position.z, _fl_rotation.x, _fl_rotation.y, _fl_rotation.z, _fr_position.x, _fr_position.y, _fr_position.z, _fr_rotation.x, _fr_rotation.y, _fr_rotation.z, _bl_position.x, _bl_position.y, _bl_position.z, _bl_rotation.x, _bl_rotation.y, _bl_rotation.z, _br_position.x, _br_position.y, _br_position.z, _bl_rotation.y, _br_rotation.y, _br_rotation.z, _lights)))}");
+                        commands.Next("set-game-data").Arg($"{JsonUtility.ToJson(new GameData(new CharacterData(_position.x, _position.y, _position.z, _rotation.x, _rotation.y, _rotation.z, _fl_position.x, _fl_position.y, _fl_position.z, _fl_rotation.x, _fl_rotation.y, _fl_rotation.z, _fr_position.x, _fr_position.y, _fr_position.z, _fr_rotation.x, _fr_rotation.y, _fr_rotation.z, _bl_position.x, _bl_position.y, _bl_position.z, _bl_rotation.x, _bl_rotation.y, _bl_rotation.z, _br_position.x, _br_position.y, _br_position.z, _bl_rotation.y, _br_rotation.y, _br_rotation.z, _lights, SaveLoadManager.PlayerData.carIndex)))}");
 
                         commands.Next("get-server-data");
 
@@ -462,7 +459,9 @@ public class MultiplayerSceneManager : GameSceneManager
 
                     if (!contains)
                     {
-                        playerCar = Instantiate(_carPrefab);
+                        CarSetup setup = Resources.Load<CarSetup>($"Car-{characterData.CarIndex + 1}");
+
+                        playerCar = Instantiate(setup.ShopPrefab).GetComponent<PlayerCar>();
 
                         _players.Add(data.Clients[i].Credentials.ID, playerCar);
                     }
@@ -491,8 +490,10 @@ public class MultiplayerSceneManager : GameSceneManager
 
                     playerCar.BackRightWheel.transform.localEulerAngles = new Vector3(characterData.BRRotationX, characterData.BRRotationY, characterData.BRRotationZ);
 
-
-                    playerCar.PoliceLights.activeLight = characterData.Lights;
+                    if (playerCar.PoliceLights != null)
+                    {
+                        playerCar.PoliceLights.activeLight = characterData.Lights;
+                    }
                 }
                 catch (Exception e)
                 {

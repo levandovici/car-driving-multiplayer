@@ -11,6 +11,15 @@ public abstract class GameSceneManager : MonoBehaviour
     [SerializeField]
     protected Car _car;
 
+    [SerializeField]
+    private SoundController _sounds;
+
+    [SerializeField]
+    private GameObject _lightsButton;
+
+    [SerializeField]
+    private Transform _spawnPoint;
+
 
 
     protected void Awake()
@@ -77,5 +86,34 @@ public abstract class GameSceneManager : MonoBehaviour
         _gameUIManager.GameUI.Nitro.OnPointerExitEvent += () => _car.VehicleCamera.CarShift(false);
 
         _gameUIManager.GameUI.Nitro.OnPointerUpEvent += () => _car.VehicleCamera.CarShift(false);
+
+
+        _sounds.SetupSFX(SaveLoadManager.PlayerData.sfxVolume);
+
+        _sounds.SetupMusic(SaveLoadManager.PlayerData.musicVolume);
+
+        InitialiseCar();
+    }
+
+    private void InitialiseCar()
+    {
+        CarSetup setup = Resources.Load<CarSetup>($"Car-{SaveLoadManager.PlayerData.carIndex + 1}");
+
+        GameObject car = Instantiate(setup.CarPrefab, _spawnPoint.position, Quaternion.identity);
+
+        PoliceLights lights = null;
+
+        if (car.TryGetComponent<PoliceLights>(out PoliceLights pl))
+        {
+            lights = pl;
+        }
+
+        _lightsButton.SetActive(lights != null);
+
+        _car.Setup(car, car.GetComponent<VehicleControl>(), lights);
+
+        var wheels = _car.VehicleControl.carWheels.wheels;
+
+        _car.Setup(wheels.frontLeft, wheels.frontRight, wheels.backLeft, wheels.backRight);
     }
 }
