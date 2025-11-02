@@ -1,5 +1,5 @@
 # ninja log v5
-2	884	7836315275046389	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	144a99ff15b4b79c
-887	1131	7836315277409440	C:/Users/nichi/source/games/car-driving-multiplayer/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/4s2y1l2w/obj/arm64-v8a/libswappywrapper.so	3d66cd324e95be77
 24	804	7836344942033205	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	144a99ff15b4b79c
 805	1467	7836344948501602	C:/Users/nichi/source/games/car-driving-multiplayer/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/4s2y1l2w/obj/arm64-v8a/libswappywrapper.so	3d66cd324e95be77
+23	5158	7838010523119864	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	144a99ff15b4b79c
+5161	5788	7838010529477625	C:/Users/nichi/source/games/car-driving-multiplayer/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/4s2y1l2w/obj/arm64-v8a/libswappywrapper.so	3d66cd324e95be77
