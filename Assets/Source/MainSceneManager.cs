@@ -1,9 +1,9 @@
-using LimonadoEntertainment.Net.Multiplayer.Commands;
-using LimonadoEntertainment.Net.Multiplayer.Data;
-using LimonadoEntertainment.Net.Multiplayer;
-using LimonadoEntertainment.Debug;
-using LimonadoEntertainment.Data;
-using LimonadoEntertainment.Net;
+using Michitai.Lan.Net.Multiplayer.Commands;
+using Michitai.Lan.Net.Multiplayer.Data;
+using Michitai.Lan.Net.Multiplayer;
+using Michitai.Lan.Debug;
+using Michitai.Lan.Data;
+using Michitai.Lan.Net;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Collections;
@@ -50,7 +50,7 @@ public class MainSceneManager : MonoBehaviour
 
     private int _max_stack_length = 256;
 
-    private LimonadoEntertainment.EPlatform _platform;
+    private Michitai.Lan.EPlatform _platform;
 
     private int _shopIndex = -1;
 
@@ -99,11 +99,11 @@ public class MainSceneManager : MonoBehaviour
     {
 #if UNITY_STANDALONE
 
-        platform = LimonadoEntertainment.EPlatform.Standalone;
+        _platform = Michitai.Lan.EPlatform.Standalone;
 
 #elif UNITY_ANDROID
 
-        _platform = LimonadoEntertainment.EPlatform.Android;
+        _platform = Michitai.Lan.EPlatform.Android;
 
 #endif
     }

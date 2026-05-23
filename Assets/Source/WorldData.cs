@@ -1,7 +1,7 @@
 using UnityEngine;
 using System;
 
-using LimonadoEntertainment.Data;
+using Michitai.Lan.Data;
 
 
 
